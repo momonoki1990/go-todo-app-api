@@ -1,0 +1,13 @@
+services:
+  mongo:
+    image: mongo:4.0
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    ports:
+      - "27010:27017"
+    volumes:
+      - ./mongodb:/data/db
+      - ./configdb:/data/configdb
+      - ./mongod.conf:/etc/mongod.conf.orig
