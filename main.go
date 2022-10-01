@@ -89,9 +89,12 @@ func createTask(w http.ResponseWriter, r *http.Request) {
 		log.Fatal("JSON decode error: ", err)
 	}
 	fmt.Printf("%+v\n", task)
-	// Insert task to DB
+
+	// Connect to DB
 	client := connectToDB()
 	defer client.Disconnect(context.TODO())
+
+	// Create task
 	coll := client.Database("todo").Collection("tasks")
 	coll.InsertOne(context.TODO(), bson.M{
 		"title":       task.Title,
@@ -113,9 +116,11 @@ func deletTask(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	// Find task(check task presence)
+	// Connect to DB
 	client := connectToDB()
 	defer client.Disconnect(context.TODO())
+
+	// Find task(check task presence)
 	coll := client.Database("todo").Collection("tasks")
 	var task bson.D
 	if err := coll.FindOne(context.TODO(), bson.M{"_id": oid}).Decode(&task); err != nil {
