@@ -19,11 +19,11 @@ import (
 )
 
 type Task struct {
-	ID string `json:"_id"`
-	Title string `json:"title"`
+	ID          string    `json:"_id"`
+	Title       string    `json:"title"`
 	CompletedAt time.Time `json:"completedAt"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 // Cnnect to MongoDB and return client
@@ -64,8 +64,8 @@ func listTasks(w http.ResponseWriter, r *http.Request) {
 
 	// Respond JSON
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-    w.WriteHeader(http.StatusOK)
-	
+	w.WriteHeader(http.StatusOK)
+
 	// respond empty slice when no results
 	if len(results) == 0 {
 		fmt.Fprint(w, make([]string, 0))
@@ -94,10 +94,10 @@ func createTask(w http.ResponseWriter, r *http.Request) {
 	defer client.Disconnect(context.TODO())
 	coll := client.Database("todo").Collection("tasks")
 	coll.InsertOne(context.TODO(), bson.M{
-		"title": task.Title,
+		"title":       task.Title,
 		"completedAt": nil,
-		"createdAt": time.Now(),
-		"updatedAt": time.Now(),
+		"createdAt":   time.Now(),
+		"updatedAt":   time.Now(),
 	})
 
 	w.WriteHeader(http.StatusOK)
