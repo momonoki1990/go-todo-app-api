@@ -1,3 +1,8 @@
+# Ignore execution file
+*
+!*/
+!*.*
+
 /mongodb
 /configdb
 .env
