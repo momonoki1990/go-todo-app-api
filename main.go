@@ -14,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -27,38 +26,38 @@ type Task struct {
 }
 
 // Cnnect to MongoDB and return client
-func connectToDB() *mongo.Client {
+func connectToDB() (*mongo.Client, error) {
 	uri := os.Getenv("MONGO_URI")
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
-	if err != nil {
-		log.Fatal("Error at connecting to DB: ", err)
-	}
-	return client
+	return client, err
 }
 
 // List all tasks
 func listTasks(w http.ResponseWriter, r *http.Request) {
 	// Cnnect to MongoDB
-	client := connectToDB()
-	defer client.Disconnect(context.TODO())
-
-	// Ping the primary
-	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		log.Fatal(err)
+	client, err := connectToDB()
+	if err != nil {
+		log.Println("Error at connect to db: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	fmt.Println("Successfully connected and pinged.")
+	defer client.Disconnect(context.TODO())
 
 	// Query to DB
 	coll := client.Database("todo").Collection("tasks")
 	cur, err := coll.Find(context.TODO(), bson.M{})
 	if err != nil {
-		log.Fatal("Error at query to db: ", err)
+		log.Println("Error at query to db: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer cur.Close(context.Background())
 
 	var results []bson.M
 	if err = cur.All(context.Background(), &results); err != nil {
-		log.Fatal(err)
+		log.Println("Error at get data by cur.All(): ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	fmt.Println("Succeeded in query")
 
@@ -73,7 +72,9 @@ func listTasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if json.NewEncoder(w).Encode(results); err != nil {
-		log.Fatal(err)
+		log.Println("Error at JSON decode of query resutls: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -86,12 +87,19 @@ func createTask(w http.ResponseWriter, r *http.Request) {
 	// Get POST body data
 	var task TaskCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		log.Fatal("JSON decode error: ", err)
+		log.Println("Error at JSON decode of POST body data: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	fmt.Printf("%+v\n", task)
 
 	// Connect to DB
-	client := connectToDB()
+	client, err := connectToDB()
+	if err != nil {
+		log.Println("Error at connect to db: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	defer client.Disconnect(context.TODO())
 
 	// Create task
@@ -120,17 +128,25 @@ func updateTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Error at converting id to objectId ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	// Get POST body data
 	var task TaskUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		log.Fatal("JSON decode error: ", err)
+		log.Println("Error at JSON decode of POST body data: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	fmt.Printf("%+v\n", task)
 
 	// Connect to DB
-	client := connectToDB()
+	client, err := connectToDB()
+	if err != nil {
+		log.Println("Error at connect to db: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	defer client.Disconnect(context.TODO())
 
 	// Find task(check task presence)
@@ -168,7 +184,12 @@ func deletTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Connect to DB
-	client := connectToDB()
+	client, err := connectToDB()
+	if err != nil {
+		log.Println("Error at connect to db: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	defer client.Disconnect(context.TODO())
 
 	// Find task(check task presence)
