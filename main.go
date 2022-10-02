@@ -106,8 +106,59 @@ func createTask(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+type TaskUpdateRequest struct {
+	Title       string    `json:"title"`
+	CompletedAt time.Time `json:"completedAt"`
+}
+
+// Update Task
+func updateTask(w http.ResponseWriter, r *http.Request) {
+	// Get id from URL path
+	id := path.Base(r.URL.Path)
+	log.Println("Requested id:", id)
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Println("Error at converting id to objectId ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	// Get POST body data
+	var task TaskUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		log.Fatal("JSON decode error: ", err)
+	}
+	fmt.Printf("%+v\n", task)
+
+	// Connect to DB
+	client := connectToDB()
+	defer client.Disconnect(context.TODO())
+
+	// Find task(check task presence)
+	coll := client.Database("todo").Collection("tasks")
+	var _task bson.M
+	if err := coll.FindOne(context.TODO(), bson.M{"_id": oid}).Decode(&task); err != nil {
+		// NOTE: including ErrNoDocuments here
+		log.Println("Error at find task ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Printf("%+v\n", _task)
+
+	// Update task
+	result, err := coll.UpdateByID(context.TODO(), oid, bson.M{"$set": bson.M{"title": task.Title, "completedAt": task.CompletedAt, "updatedAt": time.Now()}})
+	if result.ModifiedCount == 0 {
+		log.Println("Updated count is 0")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Printf("%+v", result)
+
+	w.WriteHeader(http.StatusOK)
+}
+
 // Delete task
 func deletTask(w http.ResponseWriter, r *http.Request) {
+	// Get id from URL path
 	id := path.Base(r.URL.Path)
 	log.Println("Requested id:", id)
 	oid, err := primitive.ObjectIDFromHex(id)
@@ -122,13 +173,14 @@ func deletTask(w http.ResponseWriter, r *http.Request) {
 
 	// Find task(check task presence)
 	coll := client.Database("todo").Collection("tasks")
-	var task bson.D
+	var task bson.M
 	if err := coll.FindOne(context.TODO(), bson.M{"_id": oid}).Decode(&task); err != nil {
 		// NOTE: including ErrNoDocuments here
 		log.Println("Error at find task ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	log.Printf("%+v\n", task)
 
 	// Delete task
 	result, err := coll.DeleteOne(context.TODO(), bson.M{"_id": oid})
@@ -138,7 +190,7 @@ func deletTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if result.DeletedCount == 0 {
-		log.Println("deleted count is 0")
+		log.Println("Deleted count is 0")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -154,6 +206,8 @@ func handleTaskRequest(w http.ResponseWriter, r *http.Request) {
 		listTasks(w, r)
 	case "POST":
 		createTask(w, r)
+	case "PUT":
+		updateTask(w, r)
 	case "DELETE":
 		deletTask(w, r)
 	default:
