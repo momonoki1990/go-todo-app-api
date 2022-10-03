@@ -1,4 +1,9 @@
 This is api server of to-do list application by go.
+Use:
+
+- net/http
+- MongoDB(Docker container)
+- MongoDB official go driver ( go.mongodb.org/mongo-driver )
 
 ## Get started
 
