@@ -3,6 +3,10 @@ This is api server of to-do list application by go.
 ## Get started
 
 ```
+# Create .env
+$ vim .env
+MONGO_URI=mongodb://root:example@localhost:27010/?maxPoolSize=20&w=majority
+
 # Start DB container
 $ docker compose up -d
 
